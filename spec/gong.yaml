@@ -1,0 +1,266 @@
+openapi: 3.1.0
+info:
+  title: Gong API (subset)
+  version: 1.2.0
+servers:
+  - url: https://api.gong.io
+security:
+  - basicAuth: []
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+
+  schemas:
+    CallsFilter:
+      type: object
+      properties:
+        fromDateTime:
+          type: string
+          format: date-time
+        toDateTime:
+          type: string
+          format: date-time
+        callIds:
+          type: array
+          items:
+            type: string
+        primaryUserIds:
+          type: array
+          items:
+            type: string
+        participantsEmails:
+          type: array
+          items:
+            type: string
+            format: email
+
+    ContentSelector:
+      type: object
+      properties:
+        context:
+          type: string
+          enum: [None, Extended]
+        contextTiming:
+          type: array
+          items:
+            type: string
+            enum: [Now, TimeOfCall]
+        exposedFields:
+          type: object
+          additionalProperties:
+            type: object
+
+    CallsExtensiveRequest:
+      type: object
+      required:
+        - filter
+      properties:
+        filter:
+          $ref: '#/components/schemas/CallsFilter'
+        contentSelector:
+          $ref: '#/components/schemas/ContentSelector'
+        cursor:
+          type: string
+
+    TranscriptRequest:
+      type: object
+      required:
+        - filter
+      properties:
+        filter:
+          $ref: '#/components/schemas/CallsFilter'
+        cursor:
+          type: string
+
+    BriefRequestParams:
+      type: object
+      required:
+        - workspace-id
+        - brief-name
+        - entity-type
+        - crm-entity-id
+        - period-type
+      properties:
+        workspace-id:
+          type: string
+        brief-name:
+          type: string
+        entity-type:
+          type: string
+          enum: [Deal, Account]
+        crm-entity-id:
+          type: string
+        period-type:
+          type: string
+          enum:
+            - LAST_7DAYS
+            - LAST_30DAYS
+            - LAST_90DAYS
+            - LAST_90_DAYS_SINCE_LAST_ACTIVITY
+            - LAST_YEAR_SINCE_LAST_ACTIVITY
+            - LAST_YEAR
+            - THIS_WEEK
+            - THIS_MONTH
+            - THIS_YEAR
+            - THIS_QUARTER
+            - CUSTOM_RANGE
+        from-date-time:
+          type: string
+          format: date-time
+        to-date-time:
+          type: string
+          format: date-time
+
+    SpecificCall:
+      type: object
+      additionalProperties: true
+    Calls:
+      type: object
+      additionalProperties: true
+    CallTranscripts:
+      type: object
+      additionalProperties: true
+    Users:
+      type: object
+      additionalProperties: true
+    EmailAddressReferences:
+      type: object
+      additionalProperties: true
+    BriefResponse:
+      type: object
+      additionalProperties: true
+
+paths:
+  /v2/calls/{id}:
+    get:
+      summary: Retrieve a single call
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpecificCall'
+
+  /v2/calls/extensive:
+    post:
+      summary: Filtered call list with rich payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CallsExtensiveRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Calls'
+
+  /v2/calls/transcript:
+    post:
+      summary: Download transcripts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TranscriptRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallTranscripts'
+
+  /v2/users:
+    get:
+      summary: List Gong users (100-row pages)
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Users'
+
+  /v2/data-privacy/data-for-email-address:
+    get:
+      summary: Activities for an email address (GDPR helper)
+      parameters:
+        - name: emailAddress
+          in: query
+          required: true
+          schema:
+            type: string
+            format: email
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailAddressReferences'
+
+  /v2/askanything/generate-brief:
+    get:
+      summary: Generate account/deal brief
+      parameters:
+        - name: workspace-id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: brief-name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: entity-type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [Deal, Account]
+        - name: crm-entity-id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: period-type
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: from-date-time
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to-date-time
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BriefResponse' 
