@@ -18,6 +18,7 @@
     "start:simple-v3": "node simplified-mcp-v3.js",
     "start:minimal": "node minimal-mcp.js",
     "start:claude": "node claude-mcp.js",
+    "start:gong": "node gong-claude-mcp.js",
     "start:mcp": "node build/index.js",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
