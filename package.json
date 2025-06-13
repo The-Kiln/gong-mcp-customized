@@ -10,10 +10,16 @@
     "src"
   ],
   "scripts": {
-    "start": "node build/index.js",
-    "build": "tsc && chmod 755 build/index.js",
+    "start": "node server.js",
+    "start:enhanced": "node enhanced-server.js",
+    "start:improved": "node improved-server.js",
+    "start:simple": "node simplified-mcp.js",
+    "start:mcp": "node build/index.js",
+    "build": "tsc",
     "typecheck": "tsc --noEmit",
     "prestart": "npm run build",
+    "prestart:enhanced": "npm run build",
+    "prestart:improved": "npm run build",
     "test": "jest",
     "test:smoke": "jest tests/gongSmoke.test.ts",
     "clean": "rimraf build",
@@ -27,6 +33,9 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.0",
     "axios": "^1.9.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
     "json-schema-to-zod": "^2.6.1",
     "zod": "^3.24.3"
   },
