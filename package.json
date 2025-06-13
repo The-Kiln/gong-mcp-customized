@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "start": "node server.js",
-    "start:basic": "node basic-mcp.js",
+    "start:working": "node working-mcp.js",
     "start:mcp": "node build/index.js",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
