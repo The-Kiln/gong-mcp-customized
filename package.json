@@ -16,6 +16,8 @@
     "start:simple": "node simplified-mcp.js",
     "start:simple-v2": "node simplified-mcp-v2.js",
     "start:simple-v3": "node simplified-mcp-v3.js",
+    "start:minimal": "node minimal-mcp.js",
+    "start:claude": "node claude-mcp.js",
     "start:mcp": "node build/index.js",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
