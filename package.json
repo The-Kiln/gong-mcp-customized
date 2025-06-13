@@ -14,6 +14,7 @@
     "start:enhanced": "node enhanced-server.js",
     "start:improved": "node improved-server.js",
     "start:simple": "node simplified-mcp.js",
+    "start:simple-v2": "node simplified-mcp-v2.js",
     "start:mcp": "node build/index.js",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
