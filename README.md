@@ -6,6 +6,7 @@ MCP integration for Gong API, enabling AI assistants to interact with Gong call 
 
 - Authentication via secure Basic Auth
 - Access to calls, transcripts, users, and more
+- **Automatic pagination** support for paginated endpoints
 - Compatible with Cursor AI assistant
 - Includes brief generation capability
 
@@ -55,6 +56,7 @@ These can be set either in your environment or in the Cursor MCP config.
 ## Documentation
 
 - [Main Documentation](docs/gong-mcp.md) - Detailed API and usage documentation
+- [Pagination Guide](docs/pagination.md) - How to use the pagination feature
 - [Sample Requests](docs/sample_requests.md) - Example API requests and responses
 
 ## Development
@@ -83,4 +85,5 @@ Once configured in your global Cursor MCP settings, the AI assistant can:
 - Search for calls by date range or participants
 - Access user information
 - Generate briefs for deals/accounts
-- Analyze call patterns and metrics 
+- Analyze call patterns and metrics
+- Automatically fetch all pages of paginated data

@@ -8,12 +8,13 @@ This document consolidates all information about the Gong MCP implementation.
 * Auth = **HTTP Basic** (`Access Key : Secret`) pulled from `.env`.  
 * Transport = **stdio** (Cursor default).  
 * Local Node path = `/opt/homebrew/bin/node` (stable on ARM Macs).  
+* **Automatic pagination** support for endpoints that use cursors. See [pagination.md](pagination.md) for details.
 * Six endpoints:  
   1. `GET  /v2/calls/{id}`  
-  2. `POST /v2/calls/extensive`  
-  3. `POST /v2/calls/transcript`  
-  4. `GET  /v2/users`  
-  5. `GET  /v2/data-privacy/data-for-email-address`  
+  2. `POST /v2/calls/extensive` (supports pagination)  
+  3. `POST /v2/calls/transcript` (supports pagination)  
+  4. `GET  /v2/users` (supports pagination)  
+  5. `GET  /v2/data-privacy/data-for-email-address` (supports pagination)  
   6. `GET  /v2/askanything/generate-brief`  
 
 ## Authentication
@@ -51,6 +52,19 @@ POST /v2/calls/extensive
 }
 ```
 
+To use pagination, add the `paginate` parameter:
+
+```
+POST /v2/calls/extensive
+{
+  "paginate": true,
+  "filter": { 
+    "fromDateTime": "2025-04-30T00:00:00Z",
+    "toDateTime": "2025-04-30T23:59:59Z"
+  }
+}
+```
+
 ### 3. Call Transcript
 
 ```
@@ -66,10 +80,22 @@ POST /v2/calls/transcript
 GET /v2/users
 ```
 
+With pagination:
+
+```
+GET /v2/users?paginate=true
+```
+
 ### 5. GDPR Data Lookup
 
 ```
 GET /v2/data-privacy/data-for-email-address?emailAddress=example@domain.com
+```
+
+With pagination:
+
+```
+GET /v2/data-privacy/data-for-email-address?emailAddress=example@domain.com&paginate=true
 ```
 
 ### 6. Generate Brief
@@ -104,4 +130,4 @@ Using global MCP configuration at `~/.cursor/mcp.json` with the following struct
     "GONG_SECRET": "***"
   }
 }
-``` 
+```

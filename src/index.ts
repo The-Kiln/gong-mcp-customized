@@ -70,7 +70,7 @@ const toolDefinitionMap: Map<string, McpToolDefinition> = new Map([
   ["postv2callsextensive", {
     name: "postv2callsextensive",
     description: `Filtered call list with rich payload`,
-    inputSchema: {"type":"object","properties":{"requestBody":{"type":"object","required":["filter"],"properties":{"filter":{"type":"object","properties":{"fromDateTime":{"type":"string","format":"date-time"},"toDateTime":{"type":"string","format":"date-time"},"callIds":{"type":"array","items":{"type":"string"}},"primaryUserIds":{"type":"array","items":{"type":"string"}},"participantsEmails":{"type":"array","items":{"type":"string","format":"email"}}}},"contentSelector":{"type":"object","properties":{"context":{"type":"string","enum":["None","Extended"]},"contextTiming":{"type":"array","items":{"type":"string","enum":["Now","TimeOfCall"]}},"exposedFields":{"type":"object","additionalProperties":{"type":"object"}}}},"cursor":{"type":"string"}},"description":"The JSON request body."}},"required":["requestBody"]},
+    inputSchema: {"type":"object","properties":{"requestBody":{"type":"object","required":["filter"],"properties":{"filter":{"type":"object","properties":{"fromDateTime":{"type":"string","format":"date-time"},"toDateTime":{"type":"string","format":"date-time"},"callIds":{"type":"array","items":{"type":"string"}},"primaryUserIds":{"type":"array","items":{"type":"string"}},"participantsEmails":{"type":"array","items":{"type":"string","format":"email"}}}},"contentSelector":{"type":"object","properties":{"context":{"type":"string","enum":["None","Extended"]},"contextTiming":{"type":"array","items":{"type":"string","enum":["Now","TimeOfCall"]}},"exposedFields":{"type":"object","additionalProperties":{"type":"object"}}}},"cursor":{"type":"string"}},"description":"The JSON request body."}, "paginate":{"type":"boolean","description":"Whether to automatically fetch all pages"}},"required":["requestBody"]},
     method: "post",
     pathTemplate: "/v2/calls/extensive",
     executionParameters: [],
@@ -80,7 +80,7 @@ const toolDefinitionMap: Map<string, McpToolDefinition> = new Map([
   ["postv2callstranscript", {
     name: "postv2callstranscript",
     description: `Download transcripts`,
-    inputSchema: {"type":"object","properties":{"requestBody":{"type":"object","required":["filter"],"properties":{"filter":{"type":"object","properties":{"fromDateTime":{"type":"string","format":"date-time"},"toDateTime":{"type":"string","format":"date-time"},"callIds":{"type":"array","items":{"type":"string"}},"primaryUserIds":{"type":"array","items":{"type":"string"}},"participantsEmails":{"type":"array","items":{"type":"string","format":"email"}}}},"cursor":{"type":"string"}},"description":"The JSON request body."}},"required":["requestBody"]},
+    inputSchema: {"type":"object","properties":{"requestBody":{"type":"object","required":["filter"],"properties":{"filter":{"type":"object","properties":{"fromDateTime":{"type":"string","format":"date-time"},"toDateTime":{"type":"string","format":"date-time"},"callIds":{"type":"array","items":{"type":"string"}},"primaryUserIds":{"type":"array","items":{"type":"string"}},"participantsEmails":{"type":"array","items":{"type":"string","format":"email"}}}},"cursor":{"type":"string"}},"description":"The JSON request body."}, "paginate":{"type":"boolean","description":"Whether to automatically fetch all pages"}},"required":["requestBody"]},
     method: "post",
     pathTemplate: "/v2/calls/transcript",
     executionParameters: [],
@@ -90,7 +90,7 @@ const toolDefinitionMap: Map<string, McpToolDefinition> = new Map([
   ["getv2users", {
     name: "getv2users",
     description: `List Gong users (100-row pages)`,
-    inputSchema: {"type":"object","properties":{"cursor":{"type":"string"}}},
+    inputSchema: {"type":"object","properties":{"cursor":{"type":"string"}, "paginate":{"type":"boolean","description":"Whether to automatically fetch all pages"}}},
     method: "get",
     pathTemplate: "/v2/users",
     executionParameters: [{"name":"cursor","in":"query"}],
@@ -100,7 +100,7 @@ const toolDefinitionMap: Map<string, McpToolDefinition> = new Map([
   ["getv2dataprivacydataforemailaddress", {
     name: "getv2dataprivacydataforemailaddress",
     description: `Activities for an email address (GDPR helper)`,
-    inputSchema: {"type":"object","properties":{"emailAddress":{"type":"string","format":"email"},"cursor":{"type":"string"}},"required":["emailAddress"]},
+    inputSchema: {"type":"object","properties":{"emailAddress":{"type":"string","format":"email"},"cursor":{"type":"string"}, "paginate":{"type":"boolean","description":"Whether to automatically fetch all pages"}},"required":["emailAddress"]},
     method: "get",
     pathTemplate: "/v2/data-privacy/data-for-email-address",
     executionParameters: [{"name":"emailAddress","in":"query"},{"name":"cursor","in":"query"}],
@@ -281,74 +281,177 @@ async function executeApiTool(
         const zodSchema = getZodSchemaFromJsonSchema(definition.inputSchema, toolName);
         const validatedArgs = zodSchema.parse(toolArgs);
 
-        // Build the request URL
-        let url = API_BASE_URL + definition.pathTemplate;
-        
-        // Replace path parameters
-        for (const param of definition.executionParameters) {
-            if (param.in === 'path') {
-                const value = validatedArgs[param.name];
-                if (value !== undefined) {
-                    url = url.replace(`{${param.name}}`, encodeURIComponent(value));
-                }
-            }
+        // Check if pagination is requested - can be provided directly in the args
+        const shouldPaginate = toolArgs.paginate === true || toolArgs.paginate === "true";
+        // Remove pagination parameter from validated args as it's not part of the API schema
+        if ('paginate' in validatedArgs) {
+            delete validatedArgs.paginate;
         }
 
-        // Build query parameters
-        const queryParams: Record<string, string> = {};
-        for (const param of definition.executionParameters) {
-            if (param.in === 'query') {
-                const value = validatedArgs[param.name];
-                if (value !== undefined) {
-                    queryParams[param.name] = value;
-                }
-            }
-        }
-        
-        if (Object.keys(queryParams).length > 0) {
-            url += '?' + new URLSearchParams(queryParams).toString();
-        }
-
-        // Debug logging (safe)
-        console.error('Debug - Making API request to:', url);
-        
-        // Get credentials from environment
-        const accessKey = process.env.GONG_ACCESS_KEY || '';
-        const secret = process.env.GONG_SECRET || '';
-        
-        if (!accessKey || !secret) {
-            throw new Error('Missing Gong credentials in environment');
-        }
-        
-        // Create authorization header
-        const authHeader = `Basic ${Buffer.from(`${accessKey}:${secret}`).toString('base64')}`;
-        
-        // Build request config
-        const config: AxiosRequestConfig = {
-            method: definition.method,
-            url,
-            headers: {
-                'Accept': 'application/json',
-                'Authorization': authHeader
-            }
+        // Initialize result data
+        let allData: any = null;
+        let currentCursor: string | null = null;
+        let paginationInfo = {
+            hasMorePages: false,
+            totalPages: 1,
+            currentPage: 1
         };
-
-        // Add request body if needed
-        if (definition.requestBodyContentType) {
-            config.headers!['Content-Type'] = definition.requestBodyContentType;
-            if (validatedArgs.requestBody) {
-                config.data = validatedArgs.requestBody;
-            }
+        
+        // For body requests, extract cursor from the request body if it exists
+        if (definition.requestBodyContentType && validatedArgs.requestBody) {
+            currentCursor = validatedArgs.requestBody.cursor || null;
+        } else {
+            // For query params, extract cursor if it exists
+            currentCursor = validatedArgs.cursor || null;
         }
+        
+        do {
+            // Build the request URL
+            let url = API_BASE_URL + definition.pathTemplate;
+            
+            // Replace path parameters
+            for (const param of definition.executionParameters) {
+                if (param.in === 'path') {
+                    const value = validatedArgs[param.name];
+                    if (value !== undefined) {
+                        url = url.replace(`{${param.name}}`, encodeURIComponent(value));
+                    }
+                }
+            }
 
-        // Make the request
-        const response = await axios(config);
+            // Build query parameters
+            const queryParams: Record<string, string> = {};
+            for (const param of definition.executionParameters) {
+                if (param.in === 'query') {
+                    const value = validatedArgs[param.name];
+                    if (value !== undefined) {
+                        queryParams[param.name] = value;
+                    }
+                }
+            }
+            
+            // Add cursor to query parameters if it exists and we're paginating
+            if (currentCursor && definition.executionParameters.some(p => p.name === "cursor" && p.in === "query")) {
+                queryParams["cursor"] = currentCursor;
+            }
+            
+            if (Object.keys(queryParams).length > 0) {
+                url += '?' + new URLSearchParams(queryParams).toString();
+            }
+
+            // Debug logging (safe)
+            console.error('Debug - Making API request to:', url);
+            if (currentCursor) {
+                console.error('Debug - Using cursor:', currentCursor);
+            }
+            
+            // Get credentials from environment
+            const accessKey = process.env.GONG_ACCESS_KEY || '';
+            const secret = process.env.GONG_SECRET || '';
+            
+            if (!accessKey || !secret) {
+                throw new Error('Missing Gong credentials in environment');
+            }
+            
+            // Create authorization header
+            const authHeader = `Basic ${Buffer.from(`${accessKey}:${secret}`).toString('base64')}`;
+            
+            // Build request config
+            const config: AxiosRequestConfig = {
+                method: definition.method,
+                url,
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': authHeader
+                }
+            };
+
+            // Add request body if needed
+            if (definition.requestBodyContentType) {
+                config.headers!['Content-Type'] = definition.requestBodyContentType;
+                if (validatedArgs.requestBody) {
+                    // Create a copy of the request body to modify
+                    const requestBody = {...validatedArgs.requestBody};
+                    
+                    // Update cursor in request body if we're paginating
+                    if (currentCursor && shouldPaginate) {
+                        requestBody.cursor = currentCursor;
+                    }
+                    
+                    config.data = requestBody;
+                }
+            }
+
+            // Make the request
+            const response = await axios(config);
+            
+            // Extract the next cursor from the response
+            const nextCursor = response.data?.records?.nextPageCursor || 
+                              response.data?.nextPageCursor || 
+                              response.data?.cursor || 
+                              null;
+            
+            // Determine if there are more pages based on nextCursor presence
+            const hasMorePages = !!nextCursor && shouldPaginate;
+            
+            // Update pagination info
+            paginationInfo.hasMorePages = hasMorePages;
+            if (hasMorePages) {
+                paginationInfo.totalPages++;
+                paginationInfo.currentPage++;
+            }
+            
+            // If this is the first request or we're not paginating, just use the response data
+            if (!allData) {
+                allData = response.data;
+            } else {
+                // Otherwise, merge the data
+                // Merge data based on the response structure - common patterns in API responses
+                if (response.data.records && Array.isArray(response.data.records)) {
+                    // Most common pattern: { records: [] } with a nextPageCursor
+                    allData.records = [...allData.records, ...response.data.records];
+                    // Update the cursor for the complete result
+                    allData.nextPageCursor = nextCursor;
+                } else if (response.data.calls && Array.isArray(response.data.calls)) {
+                    // For calls endpoint
+                    allData.calls = [...allData.calls, ...response.data.calls];
+                    allData.nextPageCursor = nextCursor;
+                } else if (response.data.users && Array.isArray(response.data.users)) {
+                    // For users endpoint
+                    allData.users = [...allData.users, ...response.data.users];
+                    allData.nextPageCursor = nextCursor;
+                } else if (response.data.results && Array.isArray(response.data.results)) {
+                    // For results pattern
+                    allData.results = [...allData.results, ...response.data.results];
+                    allData.nextPageCursor = nextCursor;
+                } else if (Array.isArray(response.data)) {
+                    // For array responses
+                    allData = [...allData, ...response.data];
+                } else {
+                    // For other structures, just append new data in a special format
+                    allData.additionalPages = allData.additionalPages || [];
+                    allData.additionalPages.push(response.data);
+                }
+            }
+            
+            // Update cursor for next iteration
+            currentCursor = nextCursor;
+            
+            // Log pagination status
+            if (shouldPaginate && nextCursor) {
+                console.error(`Debug - Retrieved page ${paginationInfo.currentPage}. Next cursor: ${nextCursor?.substring(0, 20)}...`);
+            }
+            
+        } while (currentCursor && shouldPaginate);
+        
+        // Add pagination metadata to the result
+        allData._paginationInfo = paginationInfo;
         
         return {
             content: [
                 {
                     type: 'text',
-                    text: JSON.stringify(response.data, null, 2)
+                    text: JSON.stringify(allData, null, 2)
                 }
             ]
         };

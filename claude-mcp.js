@@ -1,10 +1,16 @@
-const express = require('express');
-const cors = require('cors');
-const axios = require('axios');
-const app = express();
+import express from 'express';
+import cors from 'cors';
+import axios from 'axios';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import fs from 'fs';
 
-// Essential middleware
-app.use(express.json());
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Create Express app
+const app = express();
+app.use(express.json({ limit: '10mb' }));
 app.use(cors());
 
 // For logging requests
